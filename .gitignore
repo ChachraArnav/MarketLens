@@ -1,0 +1,26 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment variables and credentials
+.env
+.env.*
+!.env.example
+
+# VS Code settings
+.vscode/
+
+# Temporary files
+*.log
+.DS_Store
+
+# Local dashboard backups
+app_portfolio.py
+app_previous_ui.py
+app_before_ui.py
+app_terminal_backup.py
+
