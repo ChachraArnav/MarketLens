@@ -429,9 +429,13 @@ elif page == "ML Research":
     )
 
     model_name = st.selectbox(
-        "Classification model",
-        ["Logistic Regression", "Random Forest"]
-    )
+    "Classification model",
+    [
+        "Logistic Regression",
+        "Random Forest",
+        "Neural Network"
+    ]
+)
 
     model_id = (
         target + "_" + model_name.replace(" ", "_")
@@ -457,6 +461,13 @@ elif page == "ML Research":
         value=0.50,
         step=0.05
     )
+
+    st.caption(
+    "Higher thresholds require stronger model confidence "
+    "before classifying an ETF observation as high risk. "
+    "If no observations exceed the selected threshold, "
+    "precision, recall, and F1 are reported as zero."
+)
 
     actual = predictions["Actual"]
     predicted = (

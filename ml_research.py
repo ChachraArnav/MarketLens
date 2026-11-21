@@ -5,6 +5,7 @@ from pathlib import Path
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (
     precision_score,
@@ -61,25 +62,34 @@ for target in ["Fixed_Risk", "Adjusted_Risk"]:
     y_val = validation[target]
 
     models = {
-        "Logistic Regression": LogisticRegression(
-            max_iter=1000,
-            class_weight="balanced",
-            random_state=42
-        ),
-        "Random Forest": RandomForestClassifier(
-            n_estimators=100,
-            max_depth=8,
-            min_samples_leaf=10,
-            random_state=42,
-            n_jobs=-1
-        )
-    }
+    "Logistic Regression": LogisticRegression(
+        max_iter=1000,
+        class_weight="balanced",
+        random_state=42
+    ),
+
+    "Random Forest": RandomForestClassifier(
+        n_estimators=100,
+        max_depth=8,
+        min_samples_leaf=10,
+        random_state=42,
+        n_jobs=-1
+    ),
+
+    "Neural Network": MLPClassifier(
+        hidden_layer_sizes=(16, 8),
+        activation="relu",
+        solver="adam",
+        max_iter=500,
+        random_state=42
+    )
+}
 
     for name, model in models.items():
 
         print("Evaluating:", target, "-", name)
 
-        if name == "Logistic Regression":
+        if name in ["Logistic Regression", "Neural Network"]:
             model.fit(X_train_scaled, y_train)
             probabilities = model.predict_proba(
                 X_val_scaled
