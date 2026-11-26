@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Lint
+        run: ruff check .
+      - name: Unit tests
+        run: pytest -q
+      - name: Rebuild the research from saved prices and check it reproduces
+        run: |
+          cp results/final_model_comparison.csv /tmp/committed_comparison.csv
+          cp results/holdout/summary.json /tmp/committed_summary.json
+          python -m marketlens all
+          python - <<'PY'
+          import json
+          import pandas as pd
+          old = pd.read_csv("/tmp/committed_comparison.csv")
+          new = pd.read_csv("results/final_model_comparison.csv")
+          pd.testing.assert_frame_equal(old, new, check_exact=False, atol=1e-3)
+          a = json.load(open("/tmp/committed_summary.json"))["results"]
+          b = json.load(open("results/holdout/summary.json"))["results"]
+          for x, y in zip(a, b, strict=True):
+              assert x["model"] == y["model"] and x["threshold"] == y["threshold"], (x, y)
+              assert abs(x["test_average_precision"] - y["test_average_precision"]) < 1e-3
+          print("Committed results reproduce.")
+          PY

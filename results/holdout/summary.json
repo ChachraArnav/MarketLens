@@ -1,0 +1,53 @@
+{
+  "protocol": "Protocol (fixed before looking at 2026):\n  1. Train every model on 2021-2024 (purged).\n  2. On 2025 validation, pick the model with the highest average precision,\n     then the threshold with the highest F1 for that model.\n  3. Freeze both choices and score them once on the 2026 test period.",
+  "periods": {
+    "train": [
+      "2021-02-01",
+      "2024-12-20"
+    ],
+    "validation": [
+      "2025-01-01",
+      "2025-12-31"
+    ],
+    "test": [
+      "2026-01-02",
+      "2026-11-03"
+    ]
+  },
+  "results": [
+    {
+      "risk_definition": "Fixed_Risk",
+      "model": "Random Forest",
+      "threshold": 0.1,
+      "validation_average_precision": 0.1497133848663031,
+      "validation_base_rate": 0.06864848299111247,
+      "test_average_precision": 0.25099003530439495,
+      "test_base_rate": 0.11301494713816988,
+      "test_lift": 2.2208569898063075,
+      "test_precision": 0.20728534258456202,
+      "test_recall": 0.7709677419354839,
+      "test_f1": 0.3267259056732741,
+      "test_observations": 2743,
+      "test_events": 310,
+      "test_start": "2026-01-02",
+      "test_end": "2026-11-03"
+    },
+    {
+      "risk_definition": "Adjusted_Risk",
+      "model": "Logistic Regression",
+      "threshold": 0.5,
+      "validation_average_precision": 0.06724729771231633,
+      "validation_base_rate": 0.0560833588722035,
+      "test_average_precision": 0.06696185549970665,
+      "test_base_rate": 0.058330295297119944,
+      "test_lift": 1.147977310223096,
+      "test_precision": 0.053763440860215055,
+      "test_recall": 0.40625,
+      "test_f1": 0.09495982468955443,
+      "test_observations": 2743,
+      "test_events": 160,
+      "test_start": "2026-01-02",
+      "test_end": "2026-11-03"
+    }
+  ]
+}

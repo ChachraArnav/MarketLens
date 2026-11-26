@@ -24,3 +24,7 @@ app_previous_ui.py
 app_before_ui.py
 app_terminal_backup.py
 
+
+# Test and lint caches
+.pytest_cache/
+.ruff_cache/
