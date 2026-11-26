@@ -29,7 +29,7 @@ Every number below comes from `python -m marketlens all` and is checked by CI.
 | Volatility rule (no model) | 0.124 | **0.265** |
 | Random Forest | **0.150** | 0.251 |
 
-For the fixed 3% label the volatility rule is about as good as the forest: a little worse on 2025, a little better on 2026. The forest's own feature importances agree, with `Volatility_20D` far ahead. In other words, a fixed 3% drop is mostly a property of *which* ETF it is (gold miners and tech fall 3% far more often than bonds), not of a short-term warning pattern. When the bar scales with each ETF's own volatility, the drop becomes close to unpredictable from these features: the best model reaches 0.067 against 0.058 for chance on 2026, and the volatility rule falls below chance. That combined finding, not the 2.2× headline, is the main result.
+For the fixed 3% label the volatility rule is about as good as the forest: a little worse on 2025, a little better on 2026. The forest's own feature importances agree, with `Volatility_20D` far ahead. In other words, a fixed 3% drop is mostly explained by how volatile an ETF is at the time (gold miners and tech fall 3% far more often than bonds, and every ETF more often in turbulent spells), not by a distinct short-term warning pattern. When the bar scales with each ETF's own volatility, the drop becomes close to unpredictable from these features: the best model reaches 0.067 against 0.058 for chance on 2026, and the volatility rule falls below chance. That combined finding, not the 2.2× headline, is the main result.
 
 **2025 validation, all models** (average precision; random guessing = event rate):
 
