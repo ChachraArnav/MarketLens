@@ -678,7 +678,9 @@ elif page == "Test Results":
             f"3. Both choices were frozen and scored once on **{test_period[0]} to {test_period[1]}**."
         )
 
+        rules = {r["risk_definition"]: r for r in holdout.get("volatility_rule", [])}
         for result in holdout["results"]:
+            rule = rules.get(result["risk_definition"])
             label = ("Fixed 3% drop" if result["risk_definition"] == "Fixed_Risk"
                      else "Volatility-adjusted drop")
             section(f'{label.upper()} · {result["model"].upper()}')
@@ -700,12 +702,18 @@ elif page == "Test Results":
                 fig.add_trace(go.Scatter(x=curve["Recall"], y=curve["Precision"], mode="lines",
                                          name=result["model"], line=dict(color="#9B8AFB", width=3),
                                          fill="tozeroy", fillcolor="rgba(155,138,251,0.12)"))
+                if rule:
+                    rule_curve = load_csv(
+                        f"results/holdout/{result['risk_definition']}_volatility_rule_curve.csv")
+                    fig.add_trace(go.Scatter(x=rule_curve["Recall"], y=rule_curve["Precision"],
+                                             mode="lines", name="Volatility rule (no model)",
+                                             line=dict(color="#E9B976", width=2, dash="dot")))
                 fig.add_hline(y=result["test_base_rate"], line_dash="dash", line_color="#7F9BAF",
                               annotation_text="Random guessing", annotation_position="bottom left")
                 fig = style_chart(fig, height=360)
                 fig.update_layout(title="Precision–recall on 2026", xaxis_title="Recall",
                                   yaxis_title="Precision", xaxis=dict(range=[0, 1]),
-                                  yaxis=dict(range=[0, 1]), showlegend=False)
+                                  yaxis=dict(range=[0, 1]), showlegend=bool(rule))
                 st.plotly_chart(fig, width="stretch")
             with side_col:
                 importance_path = (config.RESULTS_DIR / "holdout"
@@ -721,6 +729,46 @@ elif page == "Test Results":
                 else:
                     st.caption(f"Validation AP {result['validation_average_precision']:.3f} "
                                f"vs random {result['validation_base_rate']:.3f} on 2025.")
+
+        if rules:
+            section("HOW MUCH OF THIS IS JUST VOLATILITY?")
+            st.write(
+                "A model-free check, added **after** the 2026 test had been seen: rank every day by "
+                "its 20-day volatility and nothing else. If the models were finding something "
+                "beyond \"volatile ETFs fall more often\", they should beat this rule."
+            )
+            rows = []
+            for result in holdout["results"]:
+                rule = rules.get(result["risk_definition"])
+                if not rule:
+                    continue
+                name = "Fixed 3%" if result["risk_definition"] == "Fixed_Risk" else "Vol-adjusted"
+                for period, base, model_ap, rule_ap in [
+                    ("2025", result["validation_base_rate"], result["validation_average_precision"],
+                     rule["validation_average_precision"]),
+                    ("2026", result["test_base_rate"], result["test_average_precision"],
+                     rule["test_average_precision"]),
+                ]:
+                    group = f"{name} · {period}"
+                    rows += [{"Group": group, "Ranker": "Random guessing", "AP": base},
+                             {"Group": group, "Ranker": "Volatility rule (no model)", "AP": rule_ap},
+                             {"Group": group, "Ranker": f"Chosen model ({result['model']})", "AP": model_ap}]
+            ap_table = pd.DataFrame(rows)
+            ap_table["Ranker"] = ap_table["Ranker"].str.replace(r"\(.*\)", "", regex=True).str.strip()
+            fig = px.bar(ap_table, x="Group", y="AP", color="Ranker", barmode="group", text_auto=".3f",
+                         color_discrete_map={"Random guessing": "#5A5F78", "Volatility rule": "#E9B976",
+                                             "Chosen model": "#9B8AFB"})
+            fig = style_chart(fig, height=380)
+            fig.update_traces(marker_cornerradius=4, textposition="outside", textfont_size=11)
+            fig.update_layout(title="Average precision: model vs volatility alone", xaxis_title="",
+                              yaxis_title="Average precision", bargap=0.3)
+            st.plotly_chart(fig, width="stretch")
+            st.info(
+                "For the fixed 3% label, ranking by volatility alone does about as well as the chosen "
+                "model: a little worse on 2025, a little better on 2026. Most of what the models learn "
+                "is that volatile ETFs fall 3% more often. Once the bar scales with each ETF's own "
+                "volatility (the adjusted label), neither the models nor the rule beat chance by much."
+            )
 
         section("WHAT THIS DOES AND DOES NOT SHOW")
         st.caption(

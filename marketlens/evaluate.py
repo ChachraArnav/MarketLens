@@ -5,6 +5,11 @@ Protocol (fixed before looking at 2026):
   2. On 2025 validation, pick the model with the highest average precision,
      then the threshold with the highest F1 for that model.
   3. Freeze both choices and score them once on the 2026 test period.
+
+Added after the 2026 test had been seen (so not part of the pre-registered
+protocol): a model-free "volatility rule" that ranks days by Volatility_20D
+alone. It asks how much of the models' signal is just "volatile ETFs fall
+more often".
 """
 
 from __future__ import annotations
@@ -27,6 +32,8 @@ from sklearn.metrics import (
 from . import config
 from .models import MODEL_NAMES, make_model
 from .splits import Splits
+
+VOLATILITY_RULE_FEATURE = "Volatility_20D"
 
 
 def threshold_metrics(y_true, probabilities, threshold: float) -> dict:
@@ -80,7 +87,7 @@ def run(splits: Splits, results_dir=config.RESULTS_DIR) -> dict:
     X_val = splits.validation[config.FEATURES]
     X_test = splits.test[config.FEATURES]
 
-    comparison, sweeps, holdout = [], [], []
+    comparison, sweeps, holdout, volatility_rule = [], [], [], []
 
     for target in config.TARGETS:
         y_train = splits.train[target]
@@ -174,6 +181,26 @@ def run(splits: Splits, results_dir=config.RESULTS_DIR) -> dict:
             holdout_dir / f"{target}_test_curve.csv", index=False
         )
 
+        # Post-hoc reference: rank by 20-day volatility, no model at all.
+        rule_val = splits.validation[VOLATILITY_RULE_FEATURE]
+        rule_test = splits.test[VOLATILITY_RULE_FEATURE]
+        rule_test_ap = average_precision_score(y_test, rule_test)
+        volatility_rule.append(
+            {
+                "risk_definition": target,
+                "feature": VOLATILITY_RULE_FEATURE,
+                "validation_average_precision": float(
+                    average_precision_score(y_val, rule_val)
+                ),
+                "test_average_precision": float(rule_test_ap),
+                "test_lift": float(rule_test_ap / base_rate) if base_rate else float("nan"),
+            }
+        )
+        precision, recall, _ = precision_recall_curve(y_test, rule_test)
+        pd.DataFrame({"Precision": precision, "Recall": recall}).to_csv(
+            holdout_dir / f"{target}_volatility_rule_curve.csv", index=False
+        )
+
         if chosen == "Random Forest":
             pd.DataFrame(
                 {"Feature": config.FEATURES, "Importance": model.feature_importances_}
@@ -184,7 +211,7 @@ def run(splits: Splits, results_dir=config.RESULTS_DIR) -> dict:
     pd.DataFrame(comparison).to_csv(results_dir / "final_model_comparison.csv", index=False)
     pd.DataFrame(sweeps).to_csv(results_dir / "threshold_comparison.csv", index=False)
     summary = {
-        "protocol": __doc__.strip().split("\n\n", 1)[1],
+        "protocol": __doc__.strip().split("\n\n")[1],
         "periods": {
             "train": [
                 str(pd.to_datetime(splits.train["Date"]).min().date()),
@@ -194,6 +221,7 @@ def run(splits: Splits, results_dir=config.RESULTS_DIR) -> dict:
             "test": [holdout[0].test_start, holdout[0].test_end] if holdout else None,
         },
         "results": [asdict(h) for h in holdout],
+        "volatility_rule": volatility_rule,
     }
     (holdout_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     return summary

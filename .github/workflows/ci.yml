@@ -35,5 +35,9 @@ jobs:
           for x, y in zip(a, b, strict=True):
               assert x["model"] == y["model"] and x["threshold"] == y["threshold"], (x, y)
               assert abs(x["test_average_precision"] - y["test_average_precision"]) < 1e-3
+          ra = json.load(open("/tmp/committed_summary.json"))["volatility_rule"]
+          rb = json.load(open("results/holdout/summary.json"))["volatility_rule"]
+          for x, y in zip(ra, rb, strict=True):
+              assert abs(x["test_average_precision"] - y["test_average_precision"]) < 1e-3
           print("Committed results reproduce.")
           PY

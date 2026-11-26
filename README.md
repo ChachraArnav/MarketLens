@@ -19,7 +19,17 @@ Every number below comes from `python -m marketlens all` and is checked by CI.
 | Fixed: next 5 days fall at least 3% | Random Forest, threshold 0.10 | **0.251** | 0.113 | **2.2×** | 77.1% | 20.7% |
 | Volatility-adjusted: fall beyond 1.5σ | Logistic Regression, threshold 0.50 | 0.067 | 0.058 | 1.15× | 40.6% | 5.4% |
 
-**What that means.** For the fixed 3% definition, the Random Forest ranks risky days about twice as well as chance, and it did so both on 2025 (0.150 vs 0.069) and on unseen 2026. At its threshold it flags roughly three quarters of the drops, with about one in five alerts being correct. The volatility-adjusted label is barely predictable from these features. That is a useful negative result: most of what the models pick up is *how volatile an ETF already is*. In the Random Forest, `Volatility_20D` is by far the most important input.
+**What that means.** For the fixed 3% definition, the Random Forest ranks risky days about twice as well as chance, both on 2025 (0.150 vs 0.069) and on unseen 2026. At its threshold it flags roughly three quarters of the drops, and about one in five of its alerts is correct.
+
+**But most of that is volatility.** A model-free check, added *after* the 2026 test had been seen, ranks each day by its 20-day volatility and nothing else:
+
+| Average precision | 2025 validation | 2026 test |
+| --- | --- | --- |
+| Random guessing | 0.069 | 0.113 |
+| Volatility rule (no model) | 0.124 | **0.265** |
+| Random Forest | **0.150** | 0.251 |
+
+For the fixed 3% label the volatility rule is about as good as the forest: a little worse on 2025, a little better on 2026. The forest's own feature importances agree, with `Volatility_20D` far ahead. In other words, a fixed 3% drop is mostly a property of *which* ETF it is (gold miners and tech fall 3% far more often than bonds), not of a short-term warning pattern. When the bar scales with each ETF's own volatility, the drop becomes close to unpredictable from these features: the best model reaches 0.067 against 0.058 for chance on 2026, and the volatility rule falls below chance. That combined finding, not the 2.2× headline, is the main result.
 
 **2025 validation, all models** (average precision; random guessing = event rate):
 
@@ -57,7 +67,7 @@ Accuracy is deliberately not the headline. Because fewer than 1 in 10 days are d
 | Portfolio | Buy-and-hold simulator with weights and a benchmark |
 | Diversification | Daily-return correlation matrix and pair explorer |
 | ML Research | 2025 validation: pick a risk definition, model and threshold; see the confusion matrix and precision-recall curve |
-| 2026 Test | The final evaluation above, with precision-recall against random guessing and feature importance |
+| 2026 Test | The final evaluation above, precision-recall against random guessing and the volatility rule, feature importance |
 | Risk Analysis | Downside-event frequency by ETF under both definitions |
 
 ![Portfolio simulator](docs/screenshots/portfolio.png)

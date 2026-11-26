@@ -49,5 +49,21 @@
       "test_start": "2026-01-02",
       "test_end": "2026-11-03"
     }
+  ],
+  "volatility_rule": [
+    {
+      "risk_definition": "Fixed_Risk",
+      "feature": "Volatility_20D",
+      "validation_average_precision": 0.12437190800136867,
+      "test_average_precision": 0.26527450920545953,
+      "test_lift": 2.3472515443566953
+    },
+    {
+      "risk_definition": "Adjusted_Risk",
+      "feature": "Volatility_20D",
+      "validation_average_precision": 0.048740469771077516,
+      "test_average_precision": 0.05309463351390736,
+      "test_lift": 0.9102411233040493
+    }
   ]
 }
