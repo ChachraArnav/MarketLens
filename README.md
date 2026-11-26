@@ -54,6 +54,18 @@ Accuracy is deliberately not the headline. Because fewer than 1 in 10 days are d
 | **Test** | 2026: scored once with the frozen choices |
 | **Models** | Majority-class baseline, logistic regression (balanced), random forest, small neural network (16-8). Scaling lives inside a scikit-learn pipeline, so it's fit on training data only. |
 
+**Is the data trustworthy?** Yahoo Finance is free and unofficial, so its prices were cross-checked against [TMX Money](https://money.tmx.com), the Toronto Stock Exchange's market data site (`python -m marketlens crosscheck`, files in `data/external/`). TMX caps downloads at 90 days, so three XEQT windows were sampled: early 2022, early 2025 and August to November 2026.
+
+| Check | Result |
+| --- | --- |
+| Trading days compared | 188 |
+| Dates in one source but not the other | 0 |
+| Closing prices, once Yahoo's dividend adjustment is undone | all within 0.5¢ (consistent with rounding of half-cent prices) |
+| Daily volume | 187 of 188 days within Yahoo's rounding to the nearest 100 shares; the one exception differs by 1.1% (February 1, 2022) |
+| Dividend adjustments | 3 of 3 fall on BlackRock's ex-distribution dates and imply exactly the announced cash amounts ($0.084, $0.090, $0.102) |
+
+Before every build, `data.validate` also rejects non-positive prices, duplicate ticker-dates and missing values. Limitation: the cross-check covers one ETF and three windows, not every price.
+
 **Leakage checks are tests, not promises.** `tests/test_features.py` shocks every price after a cutoff date and asserts that no feature on or before that date changes. `tests/test_splits.py` asserts that the periods are ordered, don't overlap and that training is purged.
 
 **Limitations.** This covers one test period in one market regime and 13 related ETFs, whose returns are correlated, so the effective sample is smaller than 2,743. Overlapping five-day labels make neighbouring days dependent. The results are historical, exclude costs and are not a trading strategy or investment advice.
@@ -63,6 +75,7 @@ Accuracy is deliberately not the headline. Because fewer than 1 in 10 days are d
 | Page | What it shows |
 | --- | --- |
 | Overview | Price history, total return, annualized volatility, max drawdown and downside-event frequency per ETF |
+| Data Quality | Collection summary, automated checks, and the TMX cross-check with dividend reconciliation |
 | ETF Explorer | Growth of $100 for up to six ETFs over their shared history |
 | Portfolio | Buy-and-hold simulator with weights and a benchmark |
 | Diversification | Daily-return correlation matrix and pair explorer |
@@ -89,7 +102,7 @@ The processed data and results are committed, so the dashboard works immediately
 ### Rebuild the research
 
 ```bash
-python -m marketlens all          # validate prices, build features and labels, evaluate
+python -m marketlens all          # validate prices, build features and labels, evaluate, cross-check
 python -m marketlens download     # optional: fetch fresh prices from Yahoo Finance first
 ```
 
@@ -116,11 +129,13 @@ marketlens/
   splits.py                Chronological split with purge gap
   models.py                Model definitions
   evaluate.py              Validation comparison, threshold sweep, single 2026 test
+  crosscheck.py            Yahoo vs TMX Money price cross-check
   analytics.py             Returns, volatility, drawdown, buy-and-hold portfolios
   __main__.py              Command line: python -m marketlens ...
 tests/                     pytest suite
 data/raw/                  One CSV per ETF from Yahoo Finance
 data/processed/            Combined prices and the modelling dataset
+data/external/             TMX Money downloads and BlackRock distribution records
 results/                   Model comparison, threshold sweep, predictions, 2026 test
 ```
 

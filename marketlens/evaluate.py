@@ -189,9 +189,7 @@ def run(splits: Splits, results_dir=config.RESULTS_DIR) -> dict:
             {
                 "risk_definition": target,
                 "feature": VOLATILITY_RULE_FEATURE,
-                "validation_average_precision": float(
-                    average_precision_score(y_val, rule_val)
-                ),
+                "validation_average_precision": float(average_precision_score(y_val, rule_val)),
                 "test_average_precision": float(rule_test_ap),
                 "test_lift": float(rule_test_ap / base_rate) if base_rate else float("nan"),
             }

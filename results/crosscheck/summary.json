@@ -1,0 +1,77 @@
+{
+  "source": "TMX Money price history (money.tmx.com)",
+  "windows": [
+    {
+      "ticker": "XEQT.TO",
+      "file": "XEQT_2022-01-04_2022-04-01.csv",
+      "start": "2022-01-04",
+      "end": "2022-04-01",
+      "tmx_days": 63,
+      "yahoo_days": 63,
+      "dates_only_in_tmx": [],
+      "dates_only_in_yahoo": [],
+      "max_close_difference_cents": 0.5,
+      "share_within_one_cent": 1.0,
+      "days_differing_by_half_cent": 5,
+      "max_return_gap_pp_excluding_distributions": 0.0197,
+      "volume_within_rounding_share": 0.9841,
+      "max_volume_difference_%": 1.095,
+      "distribution_steps": [
+        {
+          "Ex_Date": "2022-03-25",
+          "Implied_Cash_Per_Unit": 0.084,
+          "Announced_Cash_Per_Unit": 0.084,
+          "Source": "https://www.globenewswire.com/en/news-release/2022/03/21/2406619/0/en/BlackRock-Canada-Announces-March-Cash-Distributions-for-the-iShares-ETFs.html"
+        }
+      ]
+    },
+    {
+      "ticker": "XEQT.TO",
+      "file": "XEQT_2025-01-02_2025-03-31.csv",
+      "start": "2025-01-02",
+      "end": "2025-03-31",
+      "tmx_days": 62,
+      "yahoo_days": 62,
+      "dates_only_in_tmx": [],
+      "dates_only_in_yahoo": [],
+      "max_close_difference_cents": 0.5,
+      "share_within_one_cent": 1.0,
+      "days_differing_by_half_cent": 6,
+      "max_return_gap_pp_excluding_distributions": 0.0149,
+      "volume_within_rounding_share": 1.0,
+      "max_volume_difference_%": 0.026,
+      "distribution_steps": [
+        {
+          "Ex_Date": "2025-03-26",
+          "Implied_Cash_Per_Unit": 0.09,
+          "Announced_Cash_Per_Unit": 0.09,
+          "Source": "https://manilatimes.net/2025/03/19/tmt-newswire/globenewswire/blackrock-canada-announces-march-cash-distributions-for-the-ishares-etfs/2075930"
+        }
+      ]
+    },
+    {
+      "ticker": "XEQT.TO",
+      "file": "XEQT_2026-08-12_2026-11-10.csv",
+      "start": "2026-08-12",
+      "end": "2026-11-10",
+      "tmx_days": 63,
+      "yahoo_days": 63,
+      "dates_only_in_tmx": [],
+      "dates_only_in_yahoo": [],
+      "max_close_difference_cents": 0.5,
+      "share_within_one_cent": 1.0,
+      "days_differing_by_half_cent": 7,
+      "max_return_gap_pp_excluding_distributions": 0.0116,
+      "volume_within_rounding_share": 1.0,
+      "max_volume_difference_%": 0.013,
+      "distribution_steps": [
+        {
+          "Ex_Date": "2026-09-24",
+          "Implied_Cash_Per_Unit": 0.102,
+          "Announced_Cash_Per_Unit": 0.102,
+          "Source": "https://finviz.com/news/392948/blackrock-canada-announces-september-cash-distributions-for-the-ishares-etfs"
+        }
+      ]
+    }
+  ]
+}

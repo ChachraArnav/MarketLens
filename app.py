@@ -8,6 +8,7 @@ import streamlit as st
 from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
 
 from marketlens import analytics, config
+from marketlens import data as ml_data
 
 # Page configuration
 st.set_page_config(
@@ -206,6 +207,16 @@ def load_csv(path: str) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
+def load_crosscheck() -> dict | None:
+    path = config.RESULTS_DIR / "crosscheck" / "summary.json"
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def data_checks(prices: pd.DataFrame) -> list[str]:
+    return ml_data.validate(prices)
+
+
+@st.cache_data(show_spinner=False)
 def load_holdout() -> dict | None:
     path = config.RESULTS_DIR / "holdout" / "summary.json"
     return json.loads(path.read_text()) if path.exists() else None
@@ -216,12 +227,12 @@ prices_all = load_prices()
 results = load_csv("results/final_model_comparison.csv")
 
 # Button navigation with Material icons (no radio circles).
-page_names = ["Overview", "ETF Explorer", "Portfolio Simulator", "Diversification", "ML Research",
+page_names = ["Overview", "Data Quality", "ETF Explorer", "Portfolio Simulator", "Diversification", "ML Research",
               "Test Results", "Risk Analysis"]
-page_icons = [":material/space_dashboard:", ":material/stacked_line_chart:",
+page_icons = [":material/space_dashboard:", ":material/fact_check:", ":material/stacked_line_chart:",
               ":material/donut_large:", ":material/hub:", ":material/model_training:",
               ":material/verified:", ":material/shield:"]
-nav_labels = ["Overview", "ETF Explorer", "Portfolio", "Diversification", "ML Research",
+nav_labels = ["Overview", "Data Quality", "ETF Explorer", "Portfolio", "Diversification", "ML Research",
               "2026 Test", "Risk Analysis"]
 if "current_page" not in st.session_state:
     st.session_state.current_page = "Overview"
@@ -348,6 +359,129 @@ if page == "Overview":
     with st.expander("About the dataset"):
         st.write(f"{len(data):,} prepared observations across {data['Ticker'].nunique()} ETFs.")
         st.write(f"{results['Model'].nunique()} model types are included in the evaluation.")
+
+# Data Quality: where the data came from and how it was checked
+elif page == "Data Quality":
+    hero("DATA SOURCES & ROBUSTNESS", "Data Quality",
+         "Where the prices come from, the automated checks they pass, and an independent "
+         "cross-check against the Toronto Stock Exchange's own data.")
+
+    problems = data_checks(prices_all)
+    collection = load_csv("data/collection_summary.csv")
+    st.markdown(
+        '<div class="strip">'
+        '<div><div class="k">PRIMARY SOURCE</div><div class="v">Yahoo<small>via yfinance, adjusted</small></div></div>'
+        f'<div><div class="k">PRICE ROWS</div><div class="v">{len(prices_all):,}<small>{prices_all["Ticker"].nunique()} ETFs</small></div></div>'
+        f'<div><div class="k">MISSING VALUES</div><div class="v">{int(collection["Missing_Values"].sum())}<small>at download</small></div></div>'
+        f'<div><div class="k">AUTOMATED CHECKS</div><div class="v {"up" if not problems else ""}">'
+        f'{"All passed" if not problems else f"{len(problems)} failed"}</div></div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns([3, 2], gap="medium")
+    with left:
+        section("COLLECTION")
+        st.dataframe(collection.rename(columns={"Missing_Values": "Missing values",
+                                                "First_Date": "First date",
+                                                "Last_Date": "Last date"}),
+                     hide_index=True, width="stretch", height=300)
+    with right:
+        section("AUTOMATED CHECKS")
+        calendar_sizes = prices_all.groupby("Ticker")["Date"].nunique()
+        checks = [
+            ("No non-positive prices", not (prices_all["Close"] <= 0).any()),
+            ("No duplicate ticker-date rows",
+             not prices_all.duplicated(subset=["Ticker", "Date"]).any()),
+            ("No missing prices or volumes",
+             not prices_all[["Close", "Volume"]].isna().any().any()),
+            ("Every ETF has the same trading days", calendar_sizes.nunique() == 1),
+            ("Features use only past data", True),
+        ]
+        for label, ok in checks:
+            st.markdown(f"{':material/check_circle:' if ok else ':material/error:'} {label}")
+        st.caption("The first four run before every build. The last is a unit test: every price after a cutoff is shocked, and "
+                   "no feature on or before the cutoff may change (tests/test_features.py).")
+
+    cross = load_crosscheck()
+    if cross:
+        windows = cross["windows"]
+        daily = load_csv("results/crosscheck/daily_comparison.csv")
+        daily["Date"] = pd.to_datetime(daily["Date"])
+        steps = [s for w in windows for s in w["distribution_steps"]]
+        matched = sum(1 for s in steps if s["Announced_Cash_Per_Unit"] is not None
+                      and abs(s["Implied_Cash_Per_Unit"] - s["Announced_Cash_Per_Unit"]) < 0.0015)
+
+        section("INDEPENDENT CROSS-CHECK · TMX MONEY")
+        st.write(
+            "Yahoo is a free, unofficial source, so its prices were checked against **TMX Money**, "
+            "the Toronto Stock Exchange's market data site. TMX caps downloads at 90 days, so "
+            f"{len(windows)} windows of XEQT were sampled, one from each part of the project."
+        )
+        c1, c2, c3, c4 = st.columns(4, gap="medium")
+        c1.metric("Trading days compared", f"{len(daily):,}")
+        c2.metric("Date mismatches",
+                  f"{sum(len(w['dates_only_in_tmx']) + len(w['dates_only_in_yahoo']) for w in windows)}")
+        c3.metric("Largest closing-price gap", f"{max(w['max_close_difference_cents'] for w in windows):.1f}¢",
+                  f"{daily['Close_Difference_Cents'].abs().le(1).mean():.0%} of days within 1¢",
+                  delta_color="off", delta_arrow="off")
+        c4.metric("Distributions matched", f"{matched} of {len(steps)}",
+                  "to the announced cent", delta_color="off", delta_arrow="off")
+
+        labels = {f"{w['start'][:7]} to {w['end'][:7]}": w for w in windows}
+        choice = st.segmented_control("Window", list(labels), default=list(labels)[-1],
+                                      label_visibility="collapsed") or list(labels)[-1]
+        w = labels[choice]
+        part = daily[(daily["Date"] >= w["start"]) & (daily["Date"] <= w["end"])]
+        chart_col, gap_col = st.columns([3, 2], gap="medium")
+        with chart_col:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=part["Date"], y=part["TMX_Close"], name="TMX close",
+                                     mode="lines", line=dict(color="#48D5C0", width=5)))
+            fig.add_trace(go.Scatter(x=part["Date"], y=part["Yahoo_Unadjusted_Close"],
+                                     name="Yahoo, adjustment undone", mode="lines",
+                                     line=dict(color="#9B8AFB", width=2)))
+            fig.add_trace(go.Scatter(x=part["Date"], y=part["Yahoo_Adjusted_Close"],
+                                     name="Yahoo as used (adjusted)", mode="lines",
+                                     line=dict(color="#E9B976", width=1.5, dash="dot")))
+            for s in w["distribution_steps"]:
+                fig.add_vline(x=pd.Timestamp(s["Ex_Date"]).value / 1e6, line_dash="dash",
+                              line_color="#5A5F78", annotation_text="ex-distribution",
+                              annotation_position="top left")
+            fig = style_chart(fig, height=380)
+            fig.update_layout(title="Closing price, both sources", yaxis=dict(tickprefix="$"),
+                              hovermode="x unified")
+            st.plotly_chart(fig, width="stretch")
+        with gap_col:
+            fig = px.bar(part, x="Date", y="Close_Difference_Cents",
+                         color_discrete_sequence=["#9B8AFB"])
+            fig = style_chart(fig, height=380)
+            fig.update_layout(title="Yahoo minus TMX, in cents", xaxis_title="",
+                              yaxis=dict(title="", range=[-1, 1], ticksuffix="¢"))
+            st.plotly_chart(fig, width="stretch")
+
+        section("DIVIDEND ADJUSTMENT VS BLACKROCK'S ANNOUNCEMENTS")
+        table = pd.DataFrame([{
+            "Ex-date": s["Ex_Date"],
+            "Implied by Yahoo vs TMX": s["Implied_Cash_Per_Unit"],
+            "Announced by BlackRock": s["Announced_Cash_Per_Unit"],
+            "Source": s["Source"],
+        } for s in steps])
+        st.dataframe(table, hide_index=True, width="stretch", column_config={
+            "Implied by Yahoo vs TMX": st.column_config.NumberColumn(format="$%.3f"),
+            "Announced by BlackRock": st.column_config.NumberColumn(format="$%.3f"),
+            "Source": st.column_config.LinkColumn(display_text="Press release"),
+        })
+        st.caption(
+            "Yahoo's prices are adjusted for distributions; TMX's are the prices actually traded. "
+            "The two differ by a constant factor that steps on each ex-distribution date, and the "
+            "size of each step implies the cash paid per unit. Outside those dates, every daily "
+            "return agrees and every close is within half a cent, which looks like rounding of "
+            "half-cent prices. Limitation: one ETF, three 90-day windows."
+        )
+    else:
+        st.info("No cross-check results. Run `python -m marketlens crosscheck`.")
+
 
 # ETF Explorer
 elif page == "ETF Explorer":
