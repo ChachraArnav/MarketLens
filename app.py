@@ -715,7 +715,8 @@ elif page == "ML Research":
 
     model_id = target + "_" + model_name.replace(" ", "_")
     predictions = load_csv(f"results/ml_research/{model_id}_predictions.csv")
-    curve = load_csv(f"results/ml_research/{model_id}_curve.csv")
+    # scikit-learn appends a final (recall 0, precision 1) point; drop it so the chart has no spike
+    curve = load_csv(f"results/ml_research/{model_id}_curve.csv").iloc[:-1]
 
     actual = predictions["Actual"].astype(int)
     predicted = (predictions["Probability"] >= threshold).astype(int)
@@ -831,14 +832,14 @@ elif page == "Test Results":
 
             curve_col, side_col = st.columns([7, 3], gap="medium")
             with curve_col:
-                curve = load_csv(f"results/holdout/{result['risk_definition']}_test_curve.csv")
+                curve = load_csv(f"results/holdout/{result['risk_definition']}_test_curve.csv").iloc[:-1]
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(x=curve["Recall"], y=curve["Precision"], mode="lines",
                                          name=result["model"], line=dict(color="#9B8AFB", width=3),
                                          fill="tozeroy", fillcolor="rgba(155,138,251,0.12)"))
                 if rule:
                     rule_curve = load_csv(
-                        f"results/holdout/{result['risk_definition']}_volatility_rule_curve.csv")
+                        f"results/holdout/{result['risk_definition']}_volatility_rule_curve.csv").iloc[:-1]
                     fig.add_trace(go.Scatter(x=rule_curve["Recall"], y=rule_curve["Precision"],
                                              mode="lines", name="Volatility rule (no model)",
                                              line=dict(color="#E9B976", width=2, dash="dot")))
